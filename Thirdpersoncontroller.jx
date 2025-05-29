@@ -1,0 +1,54 @@
+// ThirdPersonCharacter.jsx
+import React, { useRef, useState, useEffect } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
+import { useGLTF } from '@react-three/drei'
+import { Vector3, Euler } from 'three'
+import { useKeyboardControls } from '@react-three/drei'
+
+export default function ThirdPersonCharacter() {
+  const modelRef = useRef()
+  const { nodes, animations } = useGLTF('/character.glb') // Replace with your model path
+  const { camera } = useThree()
+
+  const [velocity] = useState(() => new Vector3())
+  const speed = 5
+
+  const keys = useKeyboardControls()
+
+  useFrame((state, delta) => {
+    const forward = keys.forward
+    const backward = keys.backward
+    const left = keys.left
+    const right = keys.right
+
+    velocity.set(0, 0, 0)
+
+    if (forward) velocity.z -= 1
+    if (backward) velocity.z += 1
+    if (left) velocity.x -= 1
+    if (right) velocity.x += 1
+
+    velocity.normalize().multiplyScalar(speed * delta)
+
+    if (modelRef.current) {
+      modelRef.current.position.add(velocity)
+
+      // Rotate character towards direction of movement
+      if (velocity.lengthSq() > 0) {
+        modelRef.current.rotation.y = Math.atan2(velocity.x, velocity.z)
+      }
+
+      // Camera follows behind character
+      const offset = new Vector3(0, 3, 6)
+      offset.applyEuler(modelRef.current.rotation)
+      camera.position.copy(modelRef.current.position).add(offset)
+      camera.lookAt(modelRef.current.position)
+    }
+  })
+
+  return (
+    <group ref={modelRef}>
+      <primitive object={nodes.Hips} scale={1} />
+    </group>
+  )
+}
